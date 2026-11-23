@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="ur">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f766e">
+<title>Medical Store Billing</title>
+<style>
+:root{--teal:#0f766e;--dark:#134e4a;--bg:#f3f7f7;--line:#d9e3e3;--ink:#172b2b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px Arial,sans-serif}
+header{background:linear-gradient(120deg,var(--dark),var(--teal));color:white;padding:18px 16px}
+.wrap{max-width:1100px;margin:auto}header .top{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+h1{font-size:clamp(22px,4vw,30px);margin:0 0 5px}.sub{opacity:.88;font-size:13px}
+nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}
+button,.btn{border:0;border-radius:9px;padding:10px 14px;background:var(--teal);color:white;font-weight:700;cursor:pointer}
+nav button{background:#ffffff20;border:1px solid #ffffff50}nav button.active{background:white;color:var(--dark)}
+main{max-width:1100px;margin:18px auto;padding:0 14px}
+.panel{background:white;border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px;box-shadow:0 2px 10px #1231}
+h2{font-size:20px;margin:0 0 14px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}
+input,select{width:100%;padding:11px;border:1px solid #bdcccc;border-radius:8px;background:white;font-size:15px;min-width:0}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.secondary{background:#e5eeee;color:#173b39}.danger{background:#b42318}.muted{color:#607474;font-size:13px}
+table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:left;font-size:14px}th{background:#f0f6f5}
+.tablewrap{overflow-x:auto}.num{text-align:right;white-space:nowrap}.total{font-size:22px;font-weight:800;text-align:right;margin-top:12px}
+.hidden{display:none!important}.rowtitle{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.itemrow{display:grid;grid-template-columns:minmax(160px,2fr) 80px 110px 110px 42px;gap:8px;align-items:end;margin:10px 0}
+.itemrow .remove{background:#fee4e2;color:#9b1c14;padding:10px}
+.billhead{text-align:center;border-bottom:2px solid #222;padding-bottom:10px;margin-bottom:12px}
+.billhead h2{font-size:24px;margin:0 0 5px}.billmeta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px}
+.badge{display:inline-block;background:#e1f4f1;color:#075c55;border-radius:20px;padding:5px 9px;font-size:12px}
+@media(max-width:650px){.grid,.grid3{grid-template-columns:1fr}.itemrow{grid-template-columns:1fr 1fr}.itemrow .medicine{grid-column:1/-1}.itemrow .remove{grid-column:2}.total{text-align:left}}
+@media print{
+ body{background:white;color:#000}.no-print,header,main>.panel:not(#billPanel),#billPanel>.no-print{display:none!important}
+ body.print-receipt #billPanel{width:78mm;margin:0;padding:3mm;border:0;box-shadow:none}
+ body.print-a4 #billPanel{width:auto;margin:0;padding:10mm;border:0;box-shadow:none}
+ #billPanel{display:block!important;border:0!important}.billhead h2{font-size:21px}
+ table th,table td{font-size:12px;padding:6px 4px;color:#000}
+ @page{margin:8mm}
+ body.print-receipt @page{size:80mm auto;margin:3mm}
+}
+
+#loginScreen{max-width:440px;margin:7vh auto;padding:22px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 4px 18px #1232}
+#loginScreen h2{margin-bottom:8px}#loginScreen .field{margin:14px 0}#loginError{color:#b42318;font-size:13px;white-space:pre-wrap}
+#appHeader,#appMain{display:none}.account-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.permission-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.permission-grid label{display:flex;align-items:center;gap:8px;background:#f4f8f7;padding:10px;border-radius:8px;margin:0}
+.permission-grid input{width:auto}
+@media(max-width:650px){.permission-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<section id="loginScreen">
+ <h2>Medical Store Login</h2>
+ <p class="muted">اپنے Admin یا User اکاؤنٹ سے لاگ اِن کریں۔</p>
+ <div class="field"><label for="loginEmail">Email</label><input id="loginEmail" type="email" autocomplete="username" placeholder="اپنا Email لکھیں"></div>
+ <div class="field"><label for="loginPassword">Password</label><input id="loginPassword" type="password" autocomplete="current-password" placeholder="Password"></div>
+ <div class="actions"><button id="loginButton">Login</button></div>
+ <div id="loginError" role="alert"></div>
+</section>
+<header class="no-print" id="appHeader">
+ <div class="wrap">
+  <div class="top">
+   <div><h1 id="storeTitle">My Medical Store</h1><div class="sub">Medical Store Billing & Medicine Rate List</div></div>
+   <div class="account-tools"><span class="badge" id="accountBadge">Login</span><button id="logoutButton" class="secondary" type="button">Logout</button></div>
+  </div>
+  <nav>
+   <button class="active" data-tab="billing">نیا بل</button>
+   <button data-tab="medicines">دواؤں کی فہرست</button>
+   <button data-tab="history">پرانے بل</button>
+   <button data-tab="settings">اسٹور سیٹنگ</button>
+  </nav>
+ </div>
+</header>
+<main id="appMain">
+<section id="billing" class="tab">
+ <div class="panel">
+  <div class="rowtitle"><h2>نیا کسٹمر بل</h2><span class="badge" id="billNumber">Bill # 0001</span></div>
+  <div style="max-width:280px;margin:10px 0 14px">
+   <label for="billNoInput">بل نمبر خود درج کریں / تبدیل کریں</label>
+   <input id="billNoInput" type="text" inputmode="text" placeholder="مثلاً 1001 یا A-25">
+   <div class="muted">خالی چھوڑنے پر خودکار نمبر استعمال ہوگا۔</div>
+  </div>
+  <div class="grid3">
+   <div><label>کسٹمر کا نام (اختیاری)</label><input id="customer" placeholder="Customer name"></div>
+   <div><label>موبائل نمبر (اختیاری)</label><input id="phone" placeholder="03XXXXXXXXX"></div>
+   <div><label>تاریخ</label><input id="billDate" type="date"></div>
+  </div>
+  <div class="rowtitle" style="margin-top:18px"><h2 style="font-size:17px;margin:0">ادویات</h2><button type="button" id="addLine">+ دوا شامل کریں</button></div>
+  <div id="lines"></div>
+  <div class="grid" style="margin-top:14px">
+   <div><label>Discount (Rs.)</label><input id="discount" type="number" min="0" value="0"></div>
+   <div><label>اضافی نوٹ (اختیاری)</label><input id="note" placeholder="Thank you"></div>
+  </div>
+  <div class="total">کل رقم: Rs. <span id="grandTotal">0.00</span></div>
+  <div class="actions">
+   <button id="saveBill">بل محفوظ کریں</button>
+   <button class="secondary" id="printThermal">Thermal پرنٹ</button>
+   <button class="secondary" id="printA4">A4 پرنٹ</button>
+   <button class="secondary" id="pdfDownload">PDF ڈاؤن لوڈ</button>
+   <button class="secondary" id="whatsappShare">PDF واٹس ایپ پر شیئر</button>
+   <button class="secondary" id="clearBill">نیا بل / صاف کریں</button>
+  </div>
+  <p class="muted">نوٹ: پرنٹ کے وقت براؤزر میں اپنا پرنٹر منتخب کریں۔ Thermal رسید کے لیے 80mm یا 58mm رول کے مطابق پرنٹر سیٹنگ منتخب کریں۔</p>
+ </div>
+</section>
+
+<section id="medicines" class="tab hidden">
+ <div class="panel">
+  <h2>دوا شامل / ریٹ تبدیل کریں</h2>
+  <input type="hidden" id="medicineId">
+  <div class="grid3">
+   <div><label>دوا کا نام *</label><input id="medName" placeholder="مثلاً Panadol 500mg"></div>
+   <div><label>کمپنی / برانڈ</label><input id="medCompany" placeholder="Company"></div>
+   <div><label>فی یونٹ قیمت (Rs.) *</label><input id="medPrice" type="number" min="0" step="0.01" placeholder="0"></div>
+  </div>
+  <div class="actions"><button id="saveMedicine">دوا محفوظ کریں</button><button class="secondary" id="cancelMedicine">فارم صاف کریں</button></div>
+ </div>
+ <div class="panel">
+  <div class="rowtitle"><h2>محفوظ دوائیں</h2><input id="medicineSearch" style="max-width:280px" placeholder="دوا تلاش کریں"></div>
+  <div class="tablewrap"><table><thead><tr><th>دوا</th><th>کمپنی</th><th class="num">ریٹ (Rs.)</th><th>عمل</th></tr></thead><tbody id="medicineRows"></tbody></table></div>
+ </div>
+</section>
+
+<section id="history" class="tab hidden">
+ <div class="panel">
+  <div class="rowtitle"><h2>پرانے بل</h2><input id="historySearch" style="max-width:280px" placeholder="بل نمبر یا کسٹمر تلاش کریں"></div>
+  <div class="tablewrap"><table><thead><tr><th>بل نمبر</th><th>تاریخ</th><th>کسٹمر</th><th class="num">کل رقم</th><th>عمل</th></tr></thead><tbody id="historyRows"></tbody></table></div>
+ </div>
+</section>
+
+<section id="settings" class="tab hidden">
+ <div class="panel">
+  <h2>اسٹور کی معلومات</h2>
+  <div class="grid">
+   <div><label>میڈیکل اسٹور کا نام (بل کی مین ہیڈنگ) *</label><input id="settingName" placeholder="اپنے اسٹور کا نام لکھیں"></div>
+   <div><label>موبائل / فون</label><input id="settingPhone" placeholder="Contact number"></div>
+   <div><label>پتہ</label><input id="settingAddress" placeholder="Store address"></div>
+   <div><label>بل کے نیچے پیغام</label><input id="settingFooter" placeholder="Thank you! Visit Again"></div>
+  </div>
+  <div class="actions"><button id="saveSettings">سیٹنگ محفوظ کریں</button></div>
+ </div>
+ <div class="panel" id="adminPermissionsPanel" style="display:none">
+  <h2>User کی اجازتیں</h2>
+  <p class="muted">Admin یہاں User کے لیے کام منتخب کر سکتا ہے۔ تبدیلیاں Firebase میں محفوظ ہوں گی۔</p>
+  <div id="permissionStatus" class="muted">User کی اجازتیں لوڈ ہو رہی ہیں...</div>
+  <div class="permission-grid" id="permissionGrid"></div>
+  <div class="actions"><button id="savePermissions" type="button">اجازتیں محفوظ کریں</button></div>
+ </div>
+ <div class="panel">
+  <h2>ڈیٹا بیک اپ</h2>
+  <p class="muted">اس ابتدائی ورژن میں ڈیٹا اسی موبائل یا کمپیوٹر کے براؤزر میں محفوظ ہوتا ہے۔ دوسرے ڈیوائس پر خودکار سنک کے لیے بعد میں Cloud Sync جوڑنا ہوگا۔</p>
+  <div class="actions"><button class="secondary" id="exportData">بیک اپ ڈاؤن لوڈ کریں</button><label class="btn secondary" style="display:inline-flex;align-items:center">بیک اپ بحال کریں<input id="importData" type="file" accept="application/json" hidden></label></div>
+ </div>
+</section>
+
+<section id="billPanel" class="panel hidden">
+ <div class="billhead"><h2 id="receiptStore">MY MEDICAL STORE</h2><div id="receiptAddress"></div><div id="receiptPhone"></div><strong>CASH MEMO / SALES INVOICE</strong></div>
+ <div class="billmeta"><span id="receiptNo"></span><span id="receiptDate"></span></div>
+ <div style="margin:10px 0;font-size:13px" id="receiptCustomer"></div>
+ <table><thead><tr><th>Medicine</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead><tbody id="receiptItems"></tbody></table>
+ <div style="margin-top:12px;text-align:right;font-size:13px" id="receiptSubtotal"></div>
+ <div style="text-align:right;font-weight:bold;margin-top:5px" id="receiptDiscount"></div>
+ <div style="text-align:right;font-size:19px;font-weight:bold;margin-top:7px" id="receiptTotal"></div>
+ <div style="text-align:center;margin-top:22px;font-size:13px" id="receiptFooter"></div>
+ <div class="no-print actions"><button id="closeReceipt" class="secondary">واپس</button></div>
+</section>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDdgnNKYSzMUYROv8zW1_hpjglLCRj49tY",
+  authDomain: "medical-store-72c57.firebaseapp.com",
+  projectId: "medical-store-72c57",
+  storageBucket: "medical-store-72c57.firebasestorage.app",
+  messagingSenderId: "941721781860",
+  appId: "1:941721781860:web:61e57fb8152a9b56094171"
+};
+firebase.initializeApp(firebaseConfig);
+const auth=firebase.auth(), cloud=firebase.firestore();
+const ADMIN_UID='K7sHT9dQRdeA5s7f0fmJQfrlCYt1';
+const USER_UID='MrwAqUOmi5fArtiGiC3tv1V6kHC3';
+const PERMISSIONS=[
+ ['createBills','نیا بل بنانا'],['viewOldBills','پرانے بل دیکھنا'],['editBills','بل تبدیل کرنا'],['deleteBills','بل حذف کرنا'],
+ ['addMedicines','دوائیں شامل / تبدیل کرنا'],['enterPurchases','خریداری درج کرنا'],['receiveStock','اسٹاک وصول کرنا'],['adjustStock','اسٹاک تبدیل کرنا'],['viewReports','رپورٹس دیکھنا'],['manageDistributors','ڈسٹری بیوٹرز سنبھالنا']
+];
+let signedProfile=null, signedUser=null;
+const $=id=>document.getElementById(id);
+const KEY='medical_store_billing_v1';
+let db=load(), currentBillId=null;
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||{settings:{name:'My Medical Store',phone:'',address:'',footer:'Thank you! Visit Again'},medicines:[],bills:[],nextBill:1}}catch(e){return {settings:{name:'My Medical Store',phone:'',address:'',footer:'Thank you! Visit Again'},medicines:[],bills:[],nextBill:1}}}
+function persist(){localStorage.setItem(KEY,JSON.stringify(db));}
+// One-time, non-destructive migration of the supplied older store backup.
+// Existing entries are kept; only missing medicines and bills are appended.
+const LEGACY_BACKUP_B64='eyJzZXR0aW5ncyI6eyJuYW1lIjoiQ2l0eSBNZWRpY2FsIFN0b3JlIiwicGhvbmUiOiIiLCJhZGRyZXNzIjoiIiwiZm9vdGVyIjoiVGhhbmsgeW91ISBWaXNpdCBBZ2FpbiJ9LCJtZWRpY2luZXMiOlt7ImlkIjoiOWFlNWY2OGUtYzZhNS00M2MwLTg1MjYtOTdmMDNhMWM2N2RlIiwibmFtZSI6Ik1ldGh5Y29iYWwgU0wiLCJjb21wYW55IjoiIiwicHJpY2UiOjE4NTB9LHsiaWQiOiI5MzUyMjU4Zi05ZjlkLTQ2MDgtOGZjMi1lMzU4NjEzNTdiN2QiLCJuYW1lIjoiTmV4dW0gNDBtZyIsImNvbXBhbnkiOiJHRVRaIiwicHJpY2UiOjEyODh9LHsiaWQiOiI4Nzk0MjQ3MC0xNTM2LTRlYjYtYmViOS0yMjYzZDk4Y2I2ZDEiLCJuYW1lIjoiVGFiLkNhbHJpdGhyb215Y2luIDUwMCIsImNvbXBhbnkiOiIiLCJwcmljZSI6NzcwfSx7ImlkIjoiZDdkNmNiMzAtYTMxYS00YjNmLWI5YjItOTZlMjgzODJhODE4IiwibmFtZSI6IlByaW1vbGF0ZSBOIiwiY29tcGFueSI6IiIsInByaWNlIjo0NTB9LHsiaWQiOiIyZWY0NWZmNS1iOTQxLTQ4ODktYjM0NC0wMzA1MWExMzhhM2YiLCJuYW1lIjoiT25jYWwgR2x1Y29tZXRlciIsImNvbXBhbnkiOiIiLCJwcmljZSI6MjUwMH0seyJpZCI6ImQ0MzQxNjdmLWQ1NDAtNDY0Yy04MTIwLWYyYjk1ZGU5OGMyZCIsIm5hbWUiOiJEdWZvIE1YUiIsImNvbXBhbnkiOiIiLCJwcmljZSI6MjUwfSx7ImlkIjoiZTg2ZWNhODgtODg1YS00ZjhjLWFkMTItZTFhNzI1MGMzYzRlIiwibmFtZSI6Ik1peHRhcmQgdmlhbCIsImNvbXBhbnkiOiIiLCJwcmljZSI6MTIzMH0seyJpZCI6Ijk0ODZiZjk3LTdkYzgtNDljOC04YzkwLWMzODA1NGJjZWI4NiIsIm5hbWUiOiJaZXJvIDQwbWciLCJjb21wYW55IjoiIiwicHJpY2UiOjIzMH0seyJpZCI6ImM3ZTMzYTQ3LTdiM2EtNDM1Yy04YTMzLWEyZGQyMjMxN2MwYyIsIm5hbWUiOiJTaXRhIE1ldCA1MC8xMDAwIiwiY29tcGFueSI6IiIsInByaWNlIjo3NDB9LHsiaWQiOiJlNjVmYTdjYS0yZjk3LTRjNjktYTgwZi1iN2U2NDljMDI0NjciLCJuYW1lIjoiRXN0YXIgNUwiLCJjb21wYW55IjoiIiwicHJpY2UiOjI2MH0seyJpZCI6IjU1Njc3ZGMwLWJkM2QtNDQxNC04ZjM5LTRiNjEzZjdlZjg3YyIsIm5hbWUiOiJHZXRyeWwiLCJjb21wYW55IjoiIiwicHJpY2UiOjUxNX0seyJpZCI6IjlkNDIzNTBmLTI5YTUtNGE3Zi04MWVmLTRhMzBkMWJlZmJlMyIsIm5hbWUiOiJFbXN5aW4gTWV0IDEyLjUvNTAwIiwiY29tcGFueSI6IiIsInByaWNlIjo1NTB9LHsiaWQiOiI1YTI4NWIzNy1lOGU3LTQyY2EtYjU1OS1hMmEzNWI1YjRlNjkiLCJuYW1lIjoiVml0cnVtIiwiY29tcGFueSI6IiIsInByaWNlIjo1MzB9LHsiaWQiOiI2ODRhZjk3YS1mZjdlLTQxZjEtYmU4OS0xYTlmMzMxNjk4NGMiLCJuYW1lIjoiRmVmb2wgdml0IiwiY29tcGFueSI6IiIsInByaWNlIjo2NjJ9LHsiaWQiOiJlYWYxNDI4MS01MWM4LTQwNDktOTMzOC0zNDNiODI3MWJlNGUiLCJuYW1lIjoiRXh0b3IgNS8xNjAiLCJjb21wYW55IjoiIiwicHJpY2UiOjUyMH0seyJpZCI6ImFlMzMwMDdiLWY0YjUtNGI0ZS04MGFlLWIxODYyMGI3Y2VmOCIsIm5hbWUiOiJOZXpraWwgNDAwIiwiY29tcGFueSI6IiIsInByaWNlIjo5OTV9LHsiaWQiOiI4NjY4M2FiYS1mMmIwLTRjMGEtYTk0Ny1hODVjMzUzZjE0YzYiLCJuYW1lIjoiUGNhbSAyMG1nIiwiY29tcGFueSI6IiIsInByaWNlIjo0MDB9LHsiaWQiOiI3MTMyYWU0YS1hM2Q5LTQyZjUtOGZlNS1iYjdhZWE2ZmQyNWEiLCJuYW1lIjoiTWF4aW1hIDQwMCIsImNvbXBhbnkiOiIiLCJwcmljZSI6NDY4fSx7ImlkIjoiYTlhODFjMjgtNTBkZi00NmYzLWJmYWUtOWY4NTE3MGQwZTJmIiwibmFtZSI6Ik9uc2V0IDhtZyIsImNvbXBhbnkiOiIiLCJwcmljZSI6NDcwfSx7ImlkIjoiYzNlYTk3MGUtM2I1Yi00OWMyLTg4NzktZmRiZmUxYTAwZGZjIiwibmFtZSI6IlZlbG9jZSA1MDAiLCJjb21wYW55IjoiIiwicHJpY2UiOjcwOX0seyJpZCI6IjQ1MzM0YTIxLTE0YTYtNDI5NC04NzdhLWJjNmE2ODQzMWJiOCIsIm5hbWUiOiJQYW5hZG9sIiwiY29tcGFueSI6IiIsInByaWNlIjo1MH0seyJpZCI6ImFhMTA0MjMzLWI2OTAtNDkyMy1iMTZmLTFjZjE1MjExOWM2YSIsIm5hbWUiOiJDZWJvc2ggNDAwIiwiY29tcGFueSI6IiIsInByaWNlIjo1NjR9LHsiaWQiOiI5ZjYxODEyMy1hZGE4LTRjY2ItOGVhNC05NWUyNDMzMThmYzYiLCJuYW1lIjoiWmV6b3QgNTAwIiwiY29tcGFueSI6IiIsInByaWNlIjo0NDR9LHsiaWQiOiJlZDlhZTU0My01N2E1LTRlZWItODllYy02MWE4OGI1ODRmMDEiLCJuYW1lIjoiQXpvbWF4IDUwMCIsImNvbXBhbnkiOiIiLCJwcmljZSI6NTQ4fSx7ImlkIjoiM2JiYWZmMDEtOTNjNC00ZjQ0LWE0ZDItOTMxZmVkOTMyNmQyIiwibmFtZSI6IkxlZmxveCA1MDBtZyIsImNvbXBhbnkiOiIiLCJwcmljZSI6MTA5NX0seyJpZCI6IjQ1YmY3ZGMzLTg0MDYtNGZkZC1hMDJmLWMyZmVjMmNhMjJhYiIsIm5hbWUiOiJDZWZzcGFuIDQwMCIsImNvbXBhbnkiOiIiLCJwcmljZSI6NzMwfSx7ImlkIjoiNzJhOTc0MzItMDhmYS00MGU4LTg0YzEtYzA2ZmNjZThmN2Q4IiwibmFtZSI6Ik1peGVsIDQwMCIsImNvbXBhbnkiOiIiLCJwcmljZSI6NTgwfSx7ImlkIjoiNTA4OTQxOTMtM2NjOS00ZmQ0LTg2OTItYjFjMzRlMTRlMGIxIiwibmFtZSI6IktsYXJpY2lkIDUwMCIsImNvbXBhbnkiOiIiLCJwcmljZSI6OTkwfSx7ImlkIjoiMGRhNTg4ZDQtZjgzZi00OTZjLWI0NWEtYmNjOTliNDhmOTAzIiwibmFtZSI6IkphcmRpbmUgMTBtZyIsImNvbXBhbnkiOiIiLCJwcmljZSI6MTI4fSx7ImlkIjoiZTQ0ZDNjMTktZmRmMC00Y2M2LTkwMDctNTIwODY0MWIzNjA2IiwibmFtZSI6IkJlYXN5IDEwbWciLCJjb21wYW55IjoiIiwicHJpY2UiOjUwMH0seyJpZCI6IjViMTNmMjc3LWE5NzMtNDUyNy1iOWY3LWE0NGVlNTM3N2FhYiIsIm5hbWUiOiJDYXAuVHJhbnNhbWluIDUwMCIsImNvbXBhbnkiOiIiLCJwcmljZSI6MTA2NX0seyJpZCI6ImNkNjIxNjg4LWU0YWItNGI0MS04ZjlhLTM3Mjg1MzAyZjMzMyIsIm5hbWUiOiJDZWZpbSA0MDAiLCJjb21wYW55IjoiIiwicHJpY2UiOjU2Mn0seyJpZCI6ImE2ODg2MTZmLWRlNTktNDBlMi1hNjNjLTI2M2JhYjI2MWQ0YiIsIm5hbWUiOiJDb25jb3IiLCJjb21wYW55IjoiIiwicHJpY2UiOjM0OH0seyJpZCI6IjUzMDI2ODYxLTY4M2YtNDRkZC1hOGUzLTVjY2U2OTIwM2QwZiIsIm5hbWUiOiJCcmV4aW4gMjBtZyIsImNvbXBhbnkiOiIiLCJwcmljZSI6MTE3OX0seyJpZCI6ImQ1YjNlODhjLTRlYWEtNDEyYS04ZjljLTg1YmMzZGViOTJlYiIsIm5hbWUiOiJUYWdpcG1ldCA1MC8xMDBtZyIsImNvbXBhbnkiOiIiLCJwcmljZSI6MjAwMH0seyJpZCI6ImQxMDc4ZDEyLTU4YmUtNDUzYS1hMGM4LWIyOTQzZTA3MTUyZSIsIm5hbWUiOiJBbmRhaWQiLCJjb21wYW55IjoiIiwicHJpY2UiOjU0MH0seyJpZCI6ImM2NjhjMWM1LTUxMjItNDAzNC05YzhjLTRkMTczMGJkZDc2NSIsIm5hbWUiOiJTb2Z2YXNjIDEwbWciLCJjb21wYW55IjoiIiwicHJpY2UiOjY5N30seyJpZCI6IjYyZDczOTM2LWQ2YjctNGI4NC04YmMyLTE4ZGJhNjA4MDkzYyIsIm5hbWUiOiJTaXRhIE1ldCBYUiIsImNvbXBhbnkiOiIiLCJwcmljZSI6NzU2fSx7ImlkIjoiNzI0MDEwZDItNDUzOC00M2RkLWIwMjYtY2IxYzFiNzU5MTFkIiwibmFtZSI6IlpvcGVudCA0MG1nIiwiY29tcGFueSI6IiIsInByaWNlIjo0NDB9LHsiaWQiOiJlNTk1MThhZi02YjU1LTRmODItOTg4MC1iZmZmNjg0YjQ1NTgiLCJuYW1lIjoiRm9jaW4iLCJjb21wYW55IjoiIiwicHJpY2UiOjM2Nn0seyJpZCI6ImVmMzhmNDcxLTZhMzktNGNiZS1hMzFmLTIxNTgxYWE5ZDA2YiIsIm5hbWUiOiJLZXN0aW5lIDEwbWciLCJjb21wYW55IjoiIiwicHJpY2UiOjI5N30seyJpZCI6IjZjM2ViMjJjLWNiMTYtNDhjNi04NDFjLTgzZTBlNzViMTk2NiIsIm5hbWUiOiJGZXhldCBEIiwiY29tcGFueSI6IiIsInByaWNlIjozNjB9LHsiaWQiOiI0YzQ0YmZmNi03ZWJmLTRmYTUtOWE2Yy1mZGVlNmQwNTJhYjIiLCJuYW1lIjoiTm9zcGEgRm9ydGUiLCJjb21wYW55IjoiIiwicHJpY2UiOjY3MX0seyJpZCI6ImQwN2JmYTFlLWRhNDQtNGUyNy05N2FlLTQwY2EyZjQ4ZTU1OSIsIm5hbWUiOiJMaW5jb2F4IiwiY29tcGFueSI6IiIsInByaWNlIjo0MzB9LHsiaWQiOiI3ODdlY2E2Ny1hNDZmLTQ4NTQtOGZmYy1jZTVhMTNjYzFmZGUiLCJuYW1lIjoiRW50YW1pem9sZSBEUyIsImNvbXBhbnkiOiIiLCJwcmljZSI6MzQyfSx7ImlkIjoiYjZjY2JjYzktYmFjYS00NDNlLWJkZDQtMDlmNWM0YWU4Yzc5IiwibmFtZSI6Ik1vdmFibGUgNG1nIiwiY29tcGFueSI6IiIsInByaWNlIjo3MjB9LHsiaWQiOiI4YWU2ZTg1Yi04YzkyLTRhNGUtYTg4OS03MGM3ODJkMzA1ODciLCJuYW1lIjoiQWRveGEgMTAwbWciLCJjb21wYW55IjoiIiwicHJpY2UiOjI3OX0seyJpZCI6ImIyNGVhOGZlLTc3MzktNDkxMy04MmExLTI3MDkzZmQxYThjOCIsIm5hbWUiOiJEcm9tYXggNTAwIiwiY29tcGFueSI6IiIsInByaWNlIjo0MzJ9LHsiaWQiOiI3ODI4ZjlhYy1jNThlLTQ3NTctYWNhNy0yNWY5ZDJmYTMzODYiLCJuYW1lIjoiUG9seXBlcCIsImNvbXBhbnkiOiIiLCJwcmljZSI6NTE0fSx7ImlkIjoiYmM5NjJhZTQtNjkyOS00MDVhLTlmZjAtYjMyNWY0MDU5YzZlIiwibmFtZSI6IlN5bmF4aW1vbCIsImNvbXBhbnkiOiIiLCJwcmljZSI6MzAwfSx7ImlkIjoiOWFmZGUwMzEtZWQ1YS00ZjQyLWJlNjMtYzZkNDJkYmM4MDM4IiwibmFtZSI6IkdvY2lkIDQwbWciLCJjb21wYW55IjoiIiwicHJpY2UiOjU2MH1dLCJiaWxscyI6W3siaWQiOiJmY2I3NGJiOC1mNzA1LTRhMWItOWMxYi1iMGNiNGE4YzU2MDIiLCJubyI6IjAwMDEiLCJkYXRlIjoiMjAyNi0wOS0yNSIsImN1c3RvbWVyIjoiSGFzc2FuIFphZGEiLCJwaG9uZSI6IjAzMTMyMTgxMDA4IiwiaXRlbXMiOlt7Im1lZElkIjoiIiwibmFtZSI6Itiv2YjYpyDZhdmG2KrYrtioINqp2LHbjNq6INuM2Kcg2YbYp9mFINmE2qnavtuM2roiLCJxdHkiOjEsInJhdGUiOjB9LHsibWVkSWQiOiI5YWU1ZjY4ZS1jNmE1LTQzYzAtODUyNi05N2YwM2ExYzY3ZGUiLCJuYW1lIjoiTWV0aHljb2JhbCBTTCIsInF0eSI6MSwicmF0ZSI6MTg1MH0seyJtZWRJZCI6ImQ3ZDZjYjMwLWEzMWEtNGIzZi1iOWIyLTk2ZTI4MzgyYTgxOCIsIm5hbWUiOiJQcmltb2xhdGUgTiIsInF0eSI6MSwicmF0ZSI6NDUwfSx7Im1lZElkIjoiZDQzNDE2N2YtZDU0MC00NjRjLTgxMjAtZjJiOTVkZTk4YzJkIiwibmFtZSI6IkR1Zm8gTVhSIiwicXR5IjoxLCJyYXRlIjoyNTB9LHsibWVkSWQiOiI5MzUyMjU4Zi05ZjlkLTQ2MDgtOGZjMi1lMzU4NjEzNTdiN2QiLCJuYW1lIjoiTmV4dW0gNDBtZyIsInF0eSI6MSwicmF0ZSI6MTI4OH0seyJtZWRJZCI6Ijg3OTQyNDcwLTE1MzYtNGViNi1iZWI5LTIyNjNkOThjYjZkMSIsIm5hbWUiOiJUYWIuQ2Fscml0aHJvbXljaW4gNTAwIiwicXR5IjoxLCJyYXRlIjo3NzB9LHsibWVkSWQiOiIiLCJuYW1lIjoi2K/ZiNinINmF2YbYqtiu2Kgg2qnYsduM2rog24zYpyDZhtin2YUg2YTaqdq+24zauiIsInF0eSI6MSwicmF0ZSI6MH0seyJtZWRJZCI6ImU4NmVjYTg4LTg4NWEtNGY4Yy1hZDEyLWUxYTcyNTBjM2M0ZSIsIm5hbWUiOiJNaXh0YXJkIHZpYWwiLCJxdHkiOjEsInJhdGUiOjEyMzB9LHsibWVkSWQiOiIyZWY0NWZmNS1iOTQxLTQ4ODktYjM0NC0wMzA1MWExMzhhM2YiLCJuYW1lIjoiT25jYWwgR2x1Y29tZXRlciIsInF0eSI6MSwicmF0ZSI6MjUwMH0seyJtZWRJZCI6Ijg2NjgzYWJhLWYyYjAtNGMwYS1hOTQ3LWE4NWMzNTNmMTRjNiIsIm5hbWUiOiJQY2FtIDIwbWciLCJxdHkiOjEsInJhdGUiOjQwMH1dLCJzdWJ0b3RhbCI6ODczOCwiZGlzY291bnQiOjAsInRvdGFsIjo4NzM4LCJub3RlIjoiIn0seyJpZCI6ImI2MTFmOWMxLTAwYzgtNGZiYy1iMTkwLTcwOWRiYzFmMTk0YSIsIm5vIjoiMDAwMiIsImRhdGUiOiIyMDI2LTExLTEzIiwiY3VzdG9tZXIiOiJYeXoiLCJwaG9uZSI6IjAzdTN1dTN1M3UzdSIsIml0ZW1zIjpbeyJtZWRJZCI6ImU4NmVjYTg4LTg4NWEtNGY4Yy1hZDEyLWUxYTcyNTBjM2M0ZSIsIm5hbWUiOiJNaXh0YXJkIHZpYWwiLCJxdHkiOjEsInJhdGUiOjEyMzB9LHsibWVkSWQiOiIyZWY0NWZmNS1iOTQxLTQ4ODktYjM0NC0wMzA1MWExMzhhM2YiLCJuYW1lIjoiT25jYWwgR2x1Y29tZXRlciIsInF0eSI6MSwicmF0ZSI6MjUwMH1dLCJzdWJ0b3RhbCI6MzczMCwiZGlzY291bnQiOjAsInRvdGFsIjozNzMwLCJub3RlIjoiIn0seyJpZCI6IjVkMWEwM2VhLTdlM2MtNDMzNi05ODllLWRlNzg2NmU4YjIwOCIsIm5vIjoiMDAwMyIsImRhdGUiOiIyMDI2LTA0LTIxIiwiY3VzdG9tZXIiOiJNL08gSGFzc2FuIFphZGEiLCJwaG9uZSI6IiIsIml0ZW1zIjpbeyJtZWRJZCI6IjUwODk0MTkzLTNjYzktNGZkNC04NjkyLWIxYzM0ZTE0ZTBiMSIsIm5hbWUiOiJLbGFyaWNpZCA1MDAiLCJxdHkiOjIsInJhdGUiOjk5MH0seyJtZWRJZCI6IjUzMDI2ODYxLTY4M2YtNDRkZC1hOGUzLTVjY2U2OTIwM2QwZiIsIm5hbWUiOiJCcmV4aW4gMjBtZyIsInF0eSI6MSwicmF0ZSI6MTE3OX0seyJtZWRJZCI6IjkzNTIyNThmLTlmOWQtNDYwOC04ZmMyLWUzNTg2MTM1N2I3ZCIsIm5hbWUiOiJOZXh1bSA0MG1nIiwicXR5IjoxLCJyYXRlIjoxMjg4fSx7Im1lZElkIjoiMGRhNTg4ZDQtZjgzZi00OTZjLWI0NWEtYmNjOTliNDhmOTAzIiwibmFtZSI6IkphcmRpbmUgMTBtZyIsInF0eSI6MSwicmF0ZSI6MTI4fSx7Im1lZElkIjoiNDUzMzRhMjEtMTRhNi00Mjk0LTg3N2EtYmM2YTY4NDMxYmI4IiwibmFtZSI6IlBhbmFkb2wiLCJxdHkiOjQsInJhdGUiOjUwfSx7Im1lZElkIjoiOWFlNWY2OGUtYzZhNS00M2MwLTg1MjYtOTdmMDNhMWM2N2RlIiwibmFtZSI6Ik1ldGh5Y29iYWwgU0wiLCJxdHkiOjEsInJhdGUiOjE4NTB9LHsibWVkSWQiOiJkMTA3OGQxMi01OGJlLTQ1M2EtYTBjOC1iMjk0M2UwNzE1MmUiLCJuYW1lIjoiQW5kYWlkIiwicXR5IjoxLCJyYXRlIjo1NDB9LHsibWVkSWQiOiJkNDM0MTY3Zi1kNTQwLTQ2NGMtODEyMC1mMmI5NWRlOThjMmQiLCJuYW1lIjoiRHVmbyBNWFIiLCJxdHkiOjIsInJhdGUiOjI1MH0seyJtZWRJZCI6ImE2ODg2MTZmLWRlNTktNDBlMi1hNjNjLTI2M2JhYjI2MWQ0YiIsIm5hbWUiOiJDb25jb3IiLCJxdHkiOjEsInJhdGUiOjM0OH1dLCJzdWJ0b3RhbCI6ODAxMywiZGlzY291bnQiOjAsInRvdGFsIjo4MDEzLCJub3RlIjoiIn1dLCJuZXh0QmlsbCI6NH0=';
+function mergeLegacyBackup(){
+ const marker='medical_store_legacy_backup_20261115_merged_v1';
+ if(localStorage.getItem(marker)==='yes')return;
+ try{
+  const old=JSON.parse(decodeURIComponent(escape(atob(LEGACY_BACKUP_B64))));
+  if(!old||!Array.isArray(old.medicines)||!Array.isArray(old.bills))throw Error('invalid backup');
+  db.medicines=Array.isArray(db.medicines)?db.medicines:[];
+  db.bills=Array.isArray(db.bills)?db.bills:[];
+  const norm=v=>String(v??'').trim().toLocaleLowerCase();
+  const medicineKeys=new Set(db.medicines.map(m=>norm(m.name)+'|'+norm(m.company)));
+  let addedMedicines=0,addedBills=0;
+  for(const m of old.medicines){
+   const key=norm(m.name)+'|'+norm(m.company);
+   if(!norm(m.name)||medicineKeys.has(key))continue;
+   db.medicines.push({...m,id:m.id||crypto.randomUUID()});medicineKeys.add(key);addedMedicines++;
+  }
+  const billIds=new Set(db.bills.map(b=>String(b.id||'')));
+  for(const b of old.bills){
+   if(billIds.has(String(b.id||'')))continue;
+   db.bills.push({...b,id:b.id||crypto.randomUUID()});billIds.add(String(b.id||''));addedBills++;
+  }
+  if(!db.settings)db.settings=old.settings||{};
+  else for(const [k,v] of Object.entries(old.settings||{}))if(!String(db.settings[k]??'').trim())db.settings[k]=v;
+  const maxOld=Math.max(1,Number(old.nextBill)||1);
+  const maxCurrent=Math.max(1,Number(db.nextBill)||1);
+  db.nextBill=Math.max(maxOld,maxCurrent,db.bills.length+1);
+  persist();
+  localStorage.setItem(marker,'yes');
+  console.info('Legacy backup merged:',addedMedicines,'medicines,',addedBills,'bills');
+ }catch(err){console.error('Legacy backup migration failed',err);}
+}
+
+function hasPermission(key){return signedProfile?.role==='admin'||signedProfile?.permissions?.[key]===true;}
+function showApp(){ $('loginScreen').style.display='none';$('appHeader').style.display='';$('appMain').style.display=''; }
+function showLogin(message=''){ $('loginScreen').style.display='block';$('appHeader').style.display='none';$('appMain').style.display='none';$('loginError').textContent=message;$('loginButton').disabled=false; }
+function applyAccess(){
+ const isAdmin=signedProfile?.role==='admin';
+ $('accountBadge').textContent=(isAdmin?'Admin':'User')+' — '+(signedUser?.email||'');
+ document.querySelectorAll('nav button').forEach(b=>{
+  const tab=b.dataset.tab;
+  const allowed=isAdmin || (tab==='billing'&&hasPermission('createBills')) || (tab==='medicines'&&hasPermission('addMedicines')) || (tab==='history'&&hasPermission('viewOldBills'));
+  b.style.display=allowed?'':'none';
+ });
+ $('adminPermissionsPanel').style.display=isAdmin?'':'none';
+ $('saveSettings').disabled=!isAdmin;
+ $('saveMedicine').disabled=!(isAdmin||hasPermission('addMedicines'));
+ $('addLine').disabled=!(isAdmin||hasPermission('createBills'));
+ $('saveBill').disabled=!(isAdmin||hasPermission('createBills'));
+ $('printThermal').disabled=!(isAdmin||hasPermission('createBills'));
+ $('printA4').disabled=!(isAdmin||hasPermission('createBills'));
+ $('pdfDownload').disabled=!(isAdmin||hasPermission('createBills'));
+ $('whatsappShare').disabled=!(isAdmin||hasPermission('createBills'));
+ if(!isAdmin&&!hasPermission('createBills')&&!hasPermission('addMedicines')&&!hasPermission('viewOldBills')){
+   $('billing').classList.add('hidden');$('medicines').classList.add('hidden');$('history').classList.add('hidden');
+   $('settings').classList.remove('hidden');$('settings').innerHTML='<div class="panel"><h2>اجازت موجود نہیں</h2><p>آپ کے اکاؤنٹ پر ابھی کوئی کام فعال نہیں۔ Admin سے اجازت حاصل کریں۔</p></div>';
+ } else {
+   const first=['billing','medicines','history'].find(t=>t==='billing'?hasPermission('createBills'):t==='medicines'?hasPermission('addMedicines'):hasPermission('viewOldBills'));
+   if(first)showTab(first);
+ }
+ if(isAdmin)loadPermissionEditor();
+}
+async function loadPermissionEditor(){
+ try{
+  const snap=await cloud.collection('users').doc(USER_UID).get();
+  if(!snap.exists){$('permissionStatus').textContent='User کا ریکارڈ نہیں ملا۔';return;}
+  const data=snap.data(), perms=data.permissions||{};
+  $('permissionGrid').innerHTML=PERMISSIONS.map(([key,label])=>`<label><input type="checkbox" data-perm="${key}" ${perms[key]===true?'checked':''}> ${label}</label>`).join('');
+  $('permissionStatus').textContent='User: '+(data.email||'Email درج نہیں')+' — اجازتیں منتخب کریں۔';
+ }catch(e){$('permissionStatus').textContent='اجازتیں لوڈ نہیں ہوئیں: '+e.message;}
+}
+$('savePermissions').onclick=async()=>{
+ if(signedProfile?.role!=='admin'){alert('صرف Admin اجازتیں تبدیل کر سکتا ہے۔');return;}
+ const permissions={};document.querySelectorAll('[data-perm]').forEach(el=>permissions[el.dataset.perm]=el.checked);
+ try{await cloud.collection('users').doc(USER_UID).update({permissions});$('permissionStatus').textContent='User کی اجازتیں محفوظ ہوگئیں۔';alert('اجازتیں Firebase میں محفوظ ہوگئیں۔');}
+ catch(e){alert('اجازتیں محفوظ نہیں ہوئیں: '+e.message);}
+};
+$('loginButton').onclick=async()=>{
+ const email=$('loginEmail').value.trim(),password=$('loginPassword').value;
+ if(!email||!password){$('loginError').textContent='Email اور Password درج کریں۔';return;}
+ $('loginButton').disabled=true;$('loginError').textContent='Login ہو رہا ہے...';
+ try{
+  await Promise.race([
+   auth.signInWithEmailAndPassword(email,password),
+   new Promise((_,reject)=>setTimeout(()=>reject(new Error('15 سیکنڈ میں Firebase Login کا جواب نہیں آیا۔ انٹرنیٹ یا Firebase کنکشن چیک کریں۔')),15000))
+  ]);
+ }
+ catch(e){
+  const msg=e.code==='auth/network-request-failed'?'انٹرنیٹ کنکشن نہیں مل رہا۔ Wi-Fi یا Mobile Data چیک کریں۔':e.code==='auth/invalid-credential'?'Email یا Password غلط ہے۔':e.code==='auth/too-many-requests'?'بہت بار کوشش ہوئی ہے۔ کچھ دیر بعد دوبارہ کوشش کریں۔':e.message;
+  $('loginError').textContent='Login مسئلہ: '+msg;
+  $('loginButton').disabled=false;
+ }
+};
+$('logoutButton').onclick=()=>auth.signOut();
+auth.onAuthStateChanged(async user=>{
+ if(!user){signedUser=null;signedProfile=null;showLogin();return;}
+ $('loginButton').disabled=true;
+ $('loginError').textContent='اکاؤنٹ کی اجازت چیک ہو رہی ہے...';
+ try{
+  // Firestore may wait indefinitely on a weak mobile connection; fail visibly instead.
+  const snap=await Promise.race([
+   cloud.collection('users').doc(user.uid).get(),
+   new Promise((_,reject)=>setTimeout(()=>reject(new Error('Firebase سے جواب نہیں ملا۔ Internet چیک کریں، پھر دوبارہ Login کریں۔')),15000))
+  ]);
+  if(!snap.exists)throw new Error('اس اکاؤنٹ کا User profile نہیں ملا۔ Firebase میں اسی UID کی users والی entry چیک کریں۔');
+  const profile=snap.data();
+  if(profile.active!==true)throw new Error('یہ اکاؤنٹ بند ہے۔ Admin سے رابطہ کریں۔');
+  if(profile.role==='admin'&&user.uid!==ADMIN_UID)throw new Error('Admin UID درست نہیں۔');
+  if(profile.role==='user'&&user.uid!==USER_UID)throw new Error('User UID درست نہیں۔');
+  if(!['admin','user'].includes(profile.role))throw new Error('اکاؤنٹ کا Role درست نہیں۔');
+  signedUser=user;signedProfile=profile;showApp();applyAccess();
+ }catch(e){
+  const msg=e.code==='permission-denied'?'Firestore Rules نے User profile پڑھنے کی اجازت نہیں دی۔ Rules دوبارہ چیک کریں۔':e.code==='unavailable'?'Firebase دستیاب نہیں۔ Internet کنکشن چیک کریں۔':e.message;
+  try{await auth.signOut();}catch(_){}
+  showLogin(msg);
+ }
+});
+function money(n){return (Number(n)||0).toFixed(2)}
+function today(){return new Date().toISOString().slice(0,10)}
+function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function showTab(id){document.querySelectorAll('.tab').forEach(x=>x.classList.add('hidden'));$(id).classList.remove('hidden');document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));if(id==='medicines')renderMedicines();if(id==='history')renderHistory();if(id==='settings')fillSettings();}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+function fillSettings(){ $('settingName').value=db.settings.name||'';$('settingPhone').value=db.settings.phone||'';$('settingAddress').value=db.settings.address||'';$('settingFooter').value=db.settings.footer||''; }
+$('saveSettings').onclick=()=>{if(signedProfile?.role!=='admin'){alert('صرف Admin اسٹور سیٹنگ تبدیل کر سکتا ہے۔');return;}db.settings={name:$('settingName').value.trim()||'My Medical Store',phone:$('settingPhone').value.trim(),address:$('settingAddress').value.trim(),footer:$('settingFooter').value.trim()};persist();renderHeader();alert('اسٹور کی معلومات محفوظ ہوگئیں۔')};
+function renderHeader(){$('storeTitle').textContent=db.settings.name||'My Medical Store';}
+function clearMedicine(){$('medicineId').value='';$('medName').value='';$('medCompany').value='';$('medPrice').value='';}
+$('cancelMedicine').onclick=clearMedicine;
+$('saveMedicine').onclick=()=>{if(!(signedProfile?.role==='admin'||hasPermission('addMedicines'))){alert('آپ کو دوا شامل کرنے کی اجازت نہیں۔');return;}let name=$('medName').value.trim(),price=Number($('medPrice').value);if(!name||$('medPrice').value===''||price<0){alert('دوا کا نام اور درست قیمت درج کریں۔');return}let id=$('medicineId').value;if(id){let m=db.medicines.find(x=>x.id===id);Object.assign(m,{name,company:$('medCompany').value.trim(),price})}else db.medicines.push({id:crypto.randomUUID(),name,company:$('medCompany').value.trim(),price});persist();clearMedicine();renderMedicines();alert('دوا محفوظ ہوگئی۔')};
+function renderMedicines(){let q=$('medicineSearch').value.toLowerCase();$('medicineRows').innerHTML=db.medicines.filter(m=>(m.name+' '+m.company).toLowerCase().includes(q)).map(m=>`<tr><td>${escapeHtml(m.name)}</td><td>${escapeHtml(m.company)}</td><td class="num">${money(m.price)}</td><td><button class="secondary" onclick="editMedicine('${m.id}')">Edit</button> <button class="danger" onclick="deleteMedicine('${m.id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="4">ابھی کوئی دوا شامل نہیں کی گئی۔</td></tr>'}
+window.editMedicine=id=>{if(!(signedProfile?.role==='admin'||hasPermission('addMedicines')))return alert('اجازت نہیں۔');let m=db.medicines.find(x=>x.id===id);if(!m)return;$('medicineId').value=id;$('medName').value=m.name;$('medCompany').value=m.company;$('medPrice').value=m.price;window.scrollTo(0,0)};
+window.deleteMedicine=id=>{if(signedProfile?.role!=='admin')return alert('دوا حذف کرنے کی اجازت صرف Admin کے پاس ہے۔');if(confirm('کیا یہ دوا حذف کرنی ہے؟')){db.medicines=db.medicines.filter(m=>m.id!==id);persist();renderMedicines()}};
+$('medicineSearch').oninput=renderMedicines;
+function addLine(item={}){let div=document.createElement('div');div.className='itemrow';let opts='<option value="">دوا منتخب کریں یا نام لکھیں</option>'+db.medicines.map(m=>`<option value="${m.id}">${escapeHtml(m.name)} — Rs.${money(m.price)}</option>`).join('');div.innerHTML=`<div class="medicine"><label>دوا</label><select class="medSelect">${opts}</select></div><div><label>تعداد</label><input class="qty" type="number" min="0.01" step="0.01" value="${item.qty||1}"></div><div><label>ریٹ (Rs.)</label><input class="rate" type="number" min="0" step="0.01" value="${item.rate??''}"></div><div><label>رقم (Rs.)</label><input class="amount" readonly value="0.00"></div><button class="remove" type="button">×</button>`;let sel=div.querySelector('.medSelect'),rate=div.querySelector('.rate');if(item.medId)sel.value=item.medId;sel.onchange=()=>{let m=db.medicines.find(x=>x.id===sel.value);if(m)rate.value=m.price;calc()};div.querySelectorAll('input').forEach(x=>x.oninput=calc);div.querySelector('.remove').onclick=()=>{div.remove();calc()};if(item.rate!==undefined)rate.value=item.rate; if(item.medId&&!item.rate){let m=db.medicines.find(x=>x.id===item.medId);if(m)rate.value=m.price} $('lines').appendChild(div);calc();}
+function getItems(){return [...document.querySelectorAll('.itemrow')].map(r=>{let s=r.querySelector('.medSelect'),m=db.medicines.find(x=>x.id===s.value);return {medId:s.value,name:m?.name||s.options[s.selectedIndex]?.text||'Medicine',qty:Number(r.querySelector('.qty').value)||0,rate:Number(r.querySelector('.rate').value)||0}}).filter(x=>x.qty>0)}
+function calc(){let sum=0;document.querySelectorAll('.itemrow').forEach(r=>{let q=Number(r.querySelector('.qty').value)||0,p=Number(r.querySelector('.rate').value)||0,a=q*p;r.querySelector('.amount').value=money(a);sum+=a});let d=Math.max(0,Number($('discount').value)||0);$('grandTotal').textContent=money(Math.max(0,sum-d));return {sum,discount:d,total:Math.max(0,sum-d)}}
+$('addLine').onclick=()=>addLine();$('discount').oninput=calc;
+function newBill(){ $('lines').innerHTML='';$('customer').value='';$('phone').value='';$('billDate').value=today();$('discount').value='0';$('note').value='';currentBillId=null;const autoNo=String(db.nextBill).padStart(4,'0');$('billNoInput').value=autoNo;$('billNumber').textContent='Bill # '+autoNo;addLine();}
+$('billNoInput').oninput=()=>{$('billNumber').textContent='Bill # '+($('billNoInput').value.trim()||String(db.nextBill).padStart(4,'0'));};
+$('clearBill').onclick=newBill;
+function buildReceipt(b){$('receiptStore').textContent=db.settings.name;$('receiptAddress').textContent=db.settings.address;$('receiptPhone').textContent=db.settings.phone;$('receiptNo').textContent='Bill No: '+b.no;$('receiptDate').textContent='Date: '+b.date;$('receiptCustomer').textContent='Customer: '+(b.customer||'Cash Customer')+(b.phone?' | Phone: '+b.phone:'');$('receiptItems').innerHTML=b.items.map(x=>`<tr><td>${escapeHtml(x.name)}</td><td class="num">${x.qty}</td><td class="num">${money(x.rate)}</td><td class="num">${money(x.qty*x.rate)}</td></tr>`).join('');$('receiptSubtotal').textContent='Subtotal: Rs. '+money(b.subtotal);$('receiptDiscount').textContent='Discount: Rs. '+money(b.discount);$('receiptTotal').textContent='Grand Total: Rs. '+money(b.total);$('receiptFooter').textContent=(b.note?b.note+' | ':'')+(db.settings.footer||'');}
+function saveCurrent(){if(!(signedProfile?.role==='admin'||hasPermission('createBills'))){alert('آپ کو بل بنانے کی اجازت نہیں۔');return null;}let items=getItems();if(!items.length){alert('کم از کم ایک دوا اور مقدار درج کریں۔');return null}if(items.some(x=>x.rate<0)){alert('ریٹ درست درج کریں۔');return null}let chosenNo=$('billNoInput').value.trim()||String(db.nextBill).padStart(4,'0');if(db.bills.some(x=>x.no===chosenNo&&x.id!==currentBillId)){alert('یہ بل نمبر پہلے سے موجود ہے۔ براہِ کرم کوئی دوسرا نمبر درج کریں۔');return null}let t=calc(),b={id:currentBillId||crypto.randomUUID(),no:chosenNo,date:$('billDate').value||today(),customer:$('customer').value.trim(),phone:$('phone').value.trim(),items,subtotal:t.sum,discount:t.discount,total:t.total,note:$('note').value.trim()};if(currentBillId){let i=db.bills.findIndex(x=>x.id===currentBillId);if(i>=0)db.bills[i]=b;else db.bills.push(b)}else{db.bills.push(b);db.nextBill++}currentBillId=b.id;persist();$('billNoInput').value=b.no;$('billNumber').textContent='Bill # '+b.no;return b}
+$('saveBill').onclick=()=>{let b=saveCurrent();if(b)alert('بل محفوظ ہوگیا۔')};
+function printBill(kind){let b=saveCurrent();if(!b)return;buildReceipt(b);$('billPanel').classList.remove('hidden');document.body.classList.remove('print-a4','print-receipt');document.body.classList.add(kind==='thermal'?'print-receipt':'print-a4');window.print();setTimeout(()=>document.body.classList.remove('print-a4','print-receipt'),700)}
+$('printThermal').onclick=()=>printBill('thermal');$('printA4').onclick=()=>printBill('a4');
+window.onafterprint=()=>{$('billPanel').classList.add('hidden');document.body.classList.remove('print-a4','print-receipt')};
+$('closeReceipt').onclick=()=>$('billPanel').classList.add('hidden');
+
+function preparePdfBill(){
+ let b=saveCurrent();
+ if(!b)return null;
+ buildReceipt(b);
+ $('billPanel').classList.remove('hidden');
+ return b;
+}
+async function makeBillPdf(){
+ const b=preparePdfBill();
+ if(!b)return null;
+ if(typeof html2pdf==='undefined'){
+  $('billPanel').classList.add('hidden');
+  alert('PDF بنانے کے لیے انٹرنیٹ کنکشن درکار ہے۔ دوبارہ کوشش کریں یا A4 پرنٹ سے Save as PDF منتخب کریں۔');
+  return null;
+ }
+ const element=$('billPanel');
+ const opt={
+  margin: [6,6,6,6],
+  filename:`Medical-Bill-${b.no}.pdf`,
+  image:{type:'jpeg',quality:0.98},
+  html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
+  jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+ };
+ try{
+  const worker=html2pdf().set(opt).from(element).toPdf();
+  const pdf=await worker.get('pdf');
+  const blob=pdf.output('blob');
+  $('billPanel').classList.add('hidden');
+  return {blob,name:`Medical-Bill-${b.no}.pdf`,bill:b};
+ }catch(err){
+  $('billPanel').classList.add('hidden');
+  alert('PDF تیار نہیں ہوسکی۔ انٹرنیٹ چیک کریں یا A4 پرنٹ سے Save as PDF استعمال کریں۔');
+  return null;
+ }
+}
+$('pdfDownload').onclick=async()=>{
+ const result=await makeBillPdf();
+ if(!result)return;
+ const url=URL.createObjectURL(result.blob);
+ const a=document.createElement('a');a.href=url;a.download=result.name;a.click();
+ setTimeout(()=>URL.revokeObjectURL(url),1500);
+};
+$('whatsappShare').onclick=async()=>{
+ const result=await makeBillPdf();
+ if(!result)return;
+ const file=new File([result.blob],result.name,{type:'application/pdf'});
+ const text=`${db.settings.name||'Medical Store'} - Bill ${result.bill.no}`;
+ if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+  try{await navigator.share({files:[file],title:text,text:'آپ کا بل منسلک ہے۔'});}
+  catch(err){if(err.name!=='AbortError')alert('شیئر مکمل نہیں ہوا۔ PDF ڈاؤن لوڈ کرکے WhatsApp میں منسلک کریں۔');}
+ }else{
+  const url=URL.createObjectURL(result.blob);
+  const a=document.createElement('a');a.href=url;a.download=result.name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+  window.open('https://wa.me/?text='+encodeURIComponent(text+' — PDF ڈاؤن لوڈ ہوگئی ہے، اسے WhatsApp میں Attach کریں۔'),'_blank');
+  alert('آپ کے فون/براؤزر میں PDF کی براہ راست شیئر سہولت دستیاب نہیں۔ PDF ڈاؤن لوڈ ہوگئی ہے؛ WhatsApp کھول کر اسے Document کے طور پر Attach کریں۔');
+ }
+};
+
+function renderHistory(){let q=$('historySearch').value.toLowerCase();$('historyRows').innerHTML=[...db.bills].reverse().filter(b=>(b.no+' '+b.customer+' '+b.date).toLowerCase().includes(q)).map(b=>`<tr><td>${b.no}</td><td>${escapeHtml(b.date)}</td><td>${escapeHtml(b.customer||'Cash')}</td><td class="num">${money(b.total)}</td><td><button class="secondary" onclick="reprint('${b.id}','a4')">A4</button> <button class="secondary" onclick="reprint('${b.id}','thermal')">Thermal</button></td></tr>`).join('')||'<tr><td colspan="5">کوئی بل موجود نہیں۔</td></tr>'}
+$('historySearch').oninput=renderHistory;
+window.reprint=(id,kind)=>{if(!(signedProfile?.role==='admin'||hasPermission('viewOldBills')))return alert('پرانے بل دیکھنے کی اجازت نہیں۔');let b=db.bills.find(x=>x.id===id);if(!b)return;buildReceipt(b);$('billPanel').classList.remove('hidden');document.body.classList.add(kind==='thermal'?'print-receipt':'print-a4');window.print()};
+$('exportData').onclick=()=>{let blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='medical-store-backup-'+today()+'.json';a.click();URL.revokeObjectURL(a.href)};
+$('importData').onchange=async e=>{let f=e.target.files[0];if(!f)return;try{let d=JSON.parse(await f.text());if(!d.settings||!Array.isArray(d.medicines)||!Array.isArray(d.bills))throw Error();if(confirm('موجودہ ڈیٹا بیک اپ سے تبدیل ہو جائے گا۔ جاری رکھیں؟')){db=d;persist();renderHeader();renderMedicines();renderHistory();alert('بیک اپ بحال ہوگیا۔')}}catch(err){alert('یہ درست بیک اپ فائل نہیں ہے۔')}e.target.value=''};
+mergeLegacyBackup();
+renderHeader();newBill();
+</script>
+</body></html>
