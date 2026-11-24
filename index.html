@@ -301,7 +301,7 @@ auth.onAuthStateChanged(async user=>{
   ]);
   if(!snap.exists)throw new Error('اس اکاؤنٹ کا User profile نہیں ملا۔ Firebase میں اسی UID کی users والی entry چیک کریں۔');
   const profile=snap.data();
-  if(profile.active!==true)throw new Error('یہ اکاؤنٹ بند ہے۔ Admin سے رابطہ کریں۔');
+  if(profile.active!==true)throw new Error('DEBUG: active='+String(profile.active)+' | type='+typeof profile.active+' | uid='+user.uid);
   if(profile.role==='admin'&&user.uid!==ADMIN_UID)throw new Error('Admin UID درست نہیں۔');
   if(profile.role==='user'&&user.uid!==USER_UID)throw new Error('User UID درست نہیں۔');
   if(!['admin','user'].includes(profile.role))throw new Error('اکاؤنٹ کا Role درست نہیں۔');
